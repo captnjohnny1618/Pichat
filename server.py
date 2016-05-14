@@ -1,25 +1,34 @@
 import sys
 import socket
 import select
+import cPickle as pickle
 from collections import defaultdict
-    
+
+import lib_pichat as lp
+
 class server():
 
     PORT=8000
     MAX_CLIENTS=2
     SOCKETS=[]
     BUFF_SIZE=4096
-    IP='127.0.0.1'
-    #IP='192.168.2.4'
+    #IP='127.0.0.1'
+    IP='192.168.2.5'
     users=[]
     
     def __init__(self):
+
         server_socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        server_socket.bind((self.IP,self.PORT))
+        try:
+            server_socket.bind((self.IP,self.PORT))
+        except:
+            self.PORT+=1;
+            server_socket.bind((self.IP,self.PORT))
+
         server_socket.listen(self.MAX_CLIENTS)
 
         self.SOCKETS.append(server_socket)
-        self.users.append(user("Server",server_socket,(self.IP,self.PORT)))
+        self.users.append(lp.user("Server",server_socket,(self.IP,self.PORT)))
         
         print('----------------------')
         print('Pichat Server Started!')
@@ -30,103 +39,75 @@ class server():
 
             for sock in readable:
                 if sock==server_socket:
+                    # Server has received a new connection
+                    # Handle connection and let connected users know
                     (client_socket,ip)=server_socket.accept();
                     self.SOCKETS.append(client_socket);
-                    print("New client connected");
-                    client_socket.send("Enter a username: ")
-                    name=client_socket.recv(32)
-                    u=user(name,client_socket,ip)
+                    print("New client connected");                    
+                    u=client_socket.recv(self.BUFF_SIZE)
+                    u=pickle.loads(u)
+                    u.socket=client_socket
+                    u.ip=ip;
                     self.users.append(u)
                     print(u)
                     
                 else:
+                    # Server has received data
+                    # Prepare message object then send
                     data=sock.recv(self.BUFF_SIZE);
-                    username=self.get_user_from_socket(sock);
-                    print('Received: "' + data.rstrip() + '" from ' + username);
+                    
                     if data=='':
-                        self.SOCKETS.remove(sock);
-                        self.broadcast_message(server_socket,sock,'A user disconnected\n');
+                        m=lp.message('User "' + self.socket2name(sock) + '" disconnected\n','Server');
+                        print(str(m).rstrip())
+                        self.send_message(server_socket,sock,m);
+                        self.remove_client(sock);
+                        
                     else:
-                        signal=self.parse_data(data)
-                        if signal:
-                            print("Signal received: " + str(signal))
-                            self.handle_signal(sock,signal);
-                        else:
-                            self.broadcast_message(server_socket,sock,data);
+                        m=pickle.loads(data);
+                        print(str(m).rstrip())
 
-    def broadcast_message(self,server_socket,sock,data):
-        username=self.get_user_from_socket(sock);
-        for s in self.SOCKETS:
-            if (s != server_socket) & (s != sock):
-                try:
-                    s.send("[" + username + "]: " + data);
-                except:
-                    if s in self.SOCKETS:
-                        self.SOCKETS.remove(s);
+                        if m.signal:
+                            print("Signal received: " + str(m.signal))
+                            self.handle_signal(sock,m.signal);
+                            
+                        self.send_message(server_socket,sock,m);
 
-    def direct_message(self,dest_username,src_username,data):
-        sock=self.get_socket_from_user(dest_username);
-        if sock==None: # requested destination not found in users
-            send_status=-1
-        try:
-            sock.send("[" + src_username + " -> "+ dest_username + "]: " + data);
-            send_status=0
-        except:
-            if sock in self.SOCKETS:
-                self.SOCKETS.remove(s);
-            send_status=-1;
-
-        return send_status
+    def send_message(self,server_sock,sock,m):
+        if m.dest=='broadcast':
+            for s in self.SOCKETS:
+                if (s != server_sock) & (s != sock):
+                    try:
+                        s.send(pickle.dumps(m));
+                    except:
+                        if s in self.SOCKETS:
+                            self.remove_client(s);                            
+        else:
+            s=self.name2socket(m.dest)
+            try:
+                s.send(pickle.dumps(m));
+            except:
+                if s in self.SOCKETS:
+                    self.remove_client(s);
             
-    def get_user_from_socket(self,socket):
+    def socket2name(self,socket):
         idx=self.SOCKETS.index(socket)
         return self.users[idx].name
 
-    def get_socket_from_user(self,username):
+    def name2socket(self,username):
         socket=None
         for i in range(0,len(self.users)):
             if self.users[i].name==username:
-                socket=self.user[i].socket;
+                u=self.users[i]
+                socket=u.socket
+                #socket=self.users[i].socket;
                 break
         return socket
 
-
-        def parse_data(self,data):
-            # look at users typed message and determine if signal
-            # commands always start with a "#"
-            
-            cmd_dict={
-                'message': 0,
-                'direct_message': 1,
-                'exit': 100,
-                'logout': 101,
-                'ip': 1000,
-                'away': 9000,
-                'whos': 9001,
-                'help': 9002,
-            }
-
-            cmd_dict=defaultdict(lambda: -1,cmd_dict)
-    
-            if data[0]=='#':
-                # parse a command
-                command=data[1:len(data)].rstrip();
-                signal=cmd_dict[command]
-
-            elif data[0]=='@':
-                split_string=data[1:len(data)].split(' ',1);
-                destination=split_string[0];
-                if len(split_string)<2:
-                    split_string.append('')
-                message=split_string[1];
-                self.direct_message(destination,src_username,data):                
-                signal=1    
-            else:
-                # broadcast the data as a message
-                signal=0;
-                
-            return signal    
-        
+    def remove_client(self,sock):
+        print('Could not reach client. Removing them from client list.');
+        idx=self.SOCKETS.index(sock);
+        self.SOCKETS.remove(sock);
+        self.users.remove(self.users[idx])
 
     def handle_signal(self,socket,signal):
 
@@ -157,24 +138,6 @@ class server():
             print('Tell the user what the heck is going on!')
         else:
             print('Something went wrong')
-
-class user():
-    name=None
-    status=None
-    status_message=None
-    socket=None
-    ip=None
-    
-    def __init__(self,name,client_socket,ip):
-        self.name=name.rstrip()
-        self.socket=client_socket
-        self.ip=ip
-        self.status='online'
-        self.status_message=""
-
-    def __str__(self):
-        info=  '"' +  self.name + '"' + ' located at ' + self.ip[0] + ' on port ' + str(self.ip[1])
-        return info
     
 if __name__=='__main__':
     server()

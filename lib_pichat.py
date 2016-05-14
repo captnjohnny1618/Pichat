@@ -30,21 +30,56 @@ class message():
     body=None
 
     def __init__(self,data,src_username):
-        # Grab timestamp
+        # Grab timestamp and set user
         self.timestamp=datetime.datetime.now().time().isoformat().split('.')[0]
-
+        self.src=src_username
+        
         # Parse the data into our object
         # User is issuing a command to the server
         if data[0]=='#':
+            cmd_dict={
+                'message': 0,
+                'direct_message': 1,
+                'exit': 100,
+                'logout': 101,
+                'ip': 1000,
+                'away': 9000,
+                'whos': 9001,
+                'help': 9002,
+            }
+
+            cmd_dict=defaultdict(lambda: -1,cmd_dict)
+
             print('server command sent')
+            self.signal=1
+
+            # parse a command
+            command=data[1:len(data)].rstrip();
+            signal=cmd_dict[command]
+
             
         # User is sending a direct message    
         elif data[0]=='@':
             split_string=data[1:len(data)].split(' ',1);
-            self.dest=split_string[0].lower();
+            self.dest=split_string[0].lower()
             if len(split_string)<2:
                 split_string.append('')
-            self.body=split_string[1];
+            self.body=split_string[1]
             
         # User is chatting with everyone (broadcast message)    
         else:
+            self.dest='broadcast'
+            self.body=data;
+
+    def __str__(self):
+        if self.dest=='broadcast':
+            header="[ " + self.src + ' ' + self.timestamp + " ] "
+        else:
+            header="[ " + self.src + '->' + self.dest + ' ' + self.timestamp + " ] "
+
+        body=self.body
+        return header+body
+
+
+
+        
