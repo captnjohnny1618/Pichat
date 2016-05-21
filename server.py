@@ -12,8 +12,8 @@ class server():
     MAX_CLIENTS=2
     SOCKETS=[]
     BUFF_SIZE=4096
-    #IP='127.0.0.1'
-    IP='192.168.2.5'
+    IP='127.0.0.1'
+    #IP='192.168.2.5'
     users=[]
     
     def __init__(self):
@@ -64,12 +64,14 @@ class server():
                         
                     else:
                         m=pickle.loads(data);
-                        print(str(m).rstrip())
 
                         if m.signal:
-                            print("Signal received: " + str(m.signal))
-                            self.handle_signal(sock,m.signal);
-                            
+                            m.dest=m.src;
+                            m.src='Server'
+                            print("Signal received : " + str(m.signal))
+                            m.body=self.handle_signal(sock,m);
+
+                        print(str(m).rstrip())
                         self.send_message(server_socket,sock,m);
 
     def send_message(self,server_sock,sock,m):
@@ -109,7 +111,7 @@ class server():
         self.SOCKETS.remove(sock);
         self.users.remove(self.users[idx])
 
-    def handle_signal(self,socket,signal):
+    def handle_signal(self,socket,m):
 
 #                      'message': 0,
 #                      'direct_message': 1,
@@ -119,7 +121,11 @@ class server():
 #                      'away': 9000,
 #                      'whos': 9001,
 #                      'help': 9002,
-        
+
+        u=self.users[self.SOCKETS.index(socket)];
+
+        signal=m.signal
+        body=''
         if signal==1: # disconnect the user but don't exit program
             print('Send user direct message')            
         elif signal==2: # dunno what I was thinking here
@@ -129,15 +135,20 @@ class server():
         elif signal==101: # exit code
             print('Tell client to logout, but not exit')                      
         elif signal==1000: # ip
-            print('report the user and server ip+port back to the user')
+            print(u.name + ' requested their IP. Sending...')
+            body='Connected to server at ip: ' + u.ip[0] + ' on port ' + str(u.ip[1]) + '.\n'
         elif signal==9000: # away
             print('set the user status to away and set away message')
         elif signal==9001: # whos
-            print('report to the user everyone who is connect and their status');
+            print(u.name + ' wants to know who is connected.  Sending...');
+            for i in len(self.users):
+                body=body + self.users[i].name + ' is connected and ' + str(self.users[i].status) + '.\n'
         elif signal==9002: # help
             print('Tell the user what the heck is going on!')
         else:
             print('Something went wrong')
+
+        return body
     
 if __name__=='__main__':
     server()

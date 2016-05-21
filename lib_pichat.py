@@ -2,10 +2,11 @@ import sys
 import socket
 import select
 import datetime 
+from collections import defaultdict
 
 class user():
     name=None
-    status=None
+    status='online'
     status_message=None
     socket=None
     ip=None
@@ -27,7 +28,7 @@ class message():
     src=None
     timestamp=None
     signal=None
-    body=None
+    body=''
 
     def __init__(self,data,src_username):
         # Grab timestamp and set user
@@ -51,12 +52,13 @@ class message():
             cmd_dict=defaultdict(lambda: -1,cmd_dict)
 
             print('server command sent')
-            self.signal=1
+            self.signal=0
 
             # parse a command
             command=data[1:len(data)].rstrip();
             signal=cmd_dict[command]
-
+            self.signal=signal
+            print(self.signal)
             
         # User is sending a direct message    
         elif data[0]=='@':
@@ -79,7 +81,3 @@ class message():
 
         body=self.body
         return header+body
-
-
-
-        
