@@ -12,8 +12,8 @@ class server():
     MAX_CLIENTS=2
     SOCKETS=[]
     BUFF_SIZE=4096
-    IP='127.0.0.1'
-    #IP='192.168.2.5'
+    #IP='127.0.0.1'
+    IP='aurora.rip.ucla.edu'
     users=[]
     
     def __init__(self):

@@ -13,7 +13,8 @@ def help_string():
 class client():
 
     #SERVER_IP='192.168.2.5'
-    SERVER_IP='127.0.0.1'
+    #SERVER_IP='127.0.0.1'
+    SERVER_IP='aurora.rip.ucla.edu'
     PORT=8000
     BUFF_SIZE=4096
     USER=None
