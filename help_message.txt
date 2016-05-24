@@ -1,0 +1,18 @@
+To send messages to everyone connected, just type your message and
+press enter!
+
+>> Hey everyone! How's it going? (enter)
+
+To send a message to one user, type @username message. For
+instance, to send a message to user "john" you'd write:
+
+>> @john hey john! How's it going? (enter)
+
+Finally you can get/set information from/on the server via\n
+the # symbol:
+
+    #ip      Get your ip and port number
+    #away    Change your status to away
+    #back    Change your status to online
+    #whos    Get a list of who is connected and their status
+    #exit    Exit the program

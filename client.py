@@ -4,6 +4,12 @@ import select
 import cPickle as pickle
 import lib_pichat as lp
 
+
+def help_string():
+    f=open('help_message.txt','r')
+    help_message=f.read();
+    return help_message
+
 class client():
 
     #SERVER_IP='192.168.2.5'
@@ -15,6 +21,7 @@ class client():
     def __init__(self):
 
         ### Connect to server and set up user
+        print('')        
         print('----------------------')
         print('Pichat Client Started!')
         print('----------------------')
@@ -37,9 +44,10 @@ class client():
         sock.send(pickle.dumps(self.USER));
 
         print("Welcome %s!" % self.USER.name)
+        print(help_string())        
         sys.stdout.write('[ME] ')
         sys.stdout.flush()
-        
+
         ### Main loop to handle sending and receiving data
         while True:
             socket_list=[sys.stdin, sock]
@@ -56,6 +64,14 @@ class client():
                         print('Disconnected from server')
                         sys.exit()
                     else:
+                        if m.signal==100:
+                            print('\n\n')
+                            print('------------------------')
+                            print('Thanks for using Pichat!')
+                            print('------------------------')
+                            print('\n\n')                            
+                            sys.exit()
+                        
                         sys.stdout.write('\b\b\b\b\b');
                         sys.stdout.write(str(m))
                         sys.stdout.write('[ME] ')

@@ -44,6 +44,7 @@ class message():
                 'exit': 100,
                 'logout': 101,
                 'ip': 1000,
+                'back': 8000,
                 'away': 9000,
                 'whos': 9001,
                 'help': 9002,
@@ -51,14 +52,12 @@ class message():
 
             cmd_dict=defaultdict(lambda: -1,cmd_dict)
 
-            print('server command sent')
             self.signal=0
 
             # parse a command
             command=data[1:len(data)].rstrip();
             signal=cmd_dict[command]
             self.signal=signal
-            print(self.signal)
             
         # User is sending a direct message    
         elif data[0]=='@':

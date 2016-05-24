@@ -45,11 +45,17 @@ class server():
                     self.SOCKETS.append(client_socket);
                     print("New client connected");                    
                     u=client_socket.recv(self.BUFF_SIZE)
-                    u=pickle.loads(u)
-                    u.socket=client_socket
-                    u.ip=ip;
-                    self.users.append(u)
-                    print(u)
+                    try:
+                        u=pickle.loads(u)
+                        u.socket=client_socket
+                        u.ip=ip;
+                        self.users.append(u)
+                        print(u)
+                    except:
+                        print('User tried to connect with incorrect protocol.  Dropping.')
+                        client_socket.send('You must connect with the pichat client\n');
+                        client_socket.close()
+                        self.SOCKETS.remove(client_socket)
                     
                 else:
                     # Server has received data
@@ -63,10 +69,15 @@ class server():
                         self.remove_client(sock);
                         
                     else:
-                        m=pickle.loads(data);
+                        try:
+                            m=pickle.loads(data);
+                        except:
+                            print('Received non-pichat data, ignoring')
 
                         if m.signal:
                             m.dest=m.src;
+                            if (m.signal==9000 or m.signal==8000):
+                                m.dest='broadcast'
                             m.src='Server'
                             print("Signal received : " + str(m.signal))
                             m.body=self.handle_signal(sock,m);
@@ -131,18 +142,26 @@ class server():
         elif signal==2: # dunno what I was thinking here
             print('Nothing yet')
         elif signal==100: # exit code
-            print('Tell client to exit the program')
+            print('Client is exiting');
         elif signal==101: # exit code
-            print('Tell client to logout, but not exit')                      
+            print('Tell client to logout, but not exit')
         elif signal==1000: # ip
             print(u.name + ' requested their IP. Sending...')
             body='Connected to server at ip: ' + u.ip[0] + ' on port ' + str(u.ip[1]) + '.\n'
+        elif signal==8000: # back
+            self.users[self.SOCKETS.index(socket)].status="online"
+            body=body + u.name + ' is now online.\n'
         elif signal==9000: # away
             print('set the user status to away and set away message')
+            self.users[self.SOCKETS.index(socket)].status="away"
+            body=body + u.name + ' is now away.\n'
         elif signal==9001: # whos
             print(u.name + ' wants to know who is connected.  Sending...');
-            for i in len(self.users):
-                body=body + self.users[i].name + ' is connected and ' + str(self.users[i].status) + '.\n'
+            body="\n\n"
+            for i in range(0,len(self.users)):
+                if (self.users[i].name!='Server' and self.users[i].name!=u.name):
+                    body=body + self.users[i].name + ' is connected and ' + str(self.users[i].status) + '.\n'
+            body=body+"\n"
         elif signal==9002: # help
             print('Tell the user what the heck is going on!')
         else:
